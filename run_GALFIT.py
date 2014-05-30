@@ -168,7 +168,7 @@ xmax = xmin + 99
 ymin = int(y - 50)
 ymax = ymin + 99
 
-output_image = '/Users/acrider/Desktop/my-example/results.fits'
+output_image = '/Users/acrider/Desktop/my-example/imgblock.fits'
 
 create_galfit_feedme('/Users/acrider/Desktop/my-example/galfit.feedme',
                             input_image=put_file,
