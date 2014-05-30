@@ -1,6 +1,6 @@
 def run_galfit():
 
-    p = subprocess.Popen(['/Users/acrider/galfit/galfit', 'galfit.feedme'], cwd='/Users/acrider/Desktop/my-example',
+    p = subprocess.Popen(['/Users/acrider/galfit/galfit galfit.feedme'], cwd='/Users/acrider/Desktop/my-example',
         shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     for line in p.stdout.readlines():
         print line,
@@ -10,7 +10,8 @@ def run_galfit():
 
 def run_ls():
 
-    p = subprocess.Popen('ls', shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    p = subprocess.Popen(['which cat'], cwd='/Users/acrider/Desktop/my-example',
+        shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     for line in p.stdout.readlines():
         print line,
     retval = p.wait()

@@ -1,13 +1,14 @@
 #-------------------------------------- 
-# run_galfit
-
 def run_galfit():
 
-    output =  subprocess.call(['galfit galfit.feedme'], cwd='/Users/acrider/Desktop/my-example', shell=True)
-    print output
+    p = subprocess.Popen(['/Users/acrider/galfit/galfit galfit.feedme'], cwd='/Users/acrider/Desktop/my-example',
+        shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    for line in p.stdout.readlines():
+        print line,
+    retval = p.wait()
     
     return 
-    
+
 #-------------------------------------- 
 
 def create_galfit_feedme(feedme_file, **kwargs):
@@ -101,7 +102,6 @@ def get_GALFIT_results(filename):
     
 #-------------------------------------- 
 
-
 # IMPORT LIBRARIES   
 
 import sys
@@ -120,9 +120,6 @@ from scipy.optimize import curve_fit
 import math as mth
 import subprocess
 
-
-# IMPORT LIBRARIES 
-  
 import os.path
 import urllib
 import urllib2
@@ -135,58 +132,104 @@ import scipy.ndimage as ndimage
 from get_SDSS_FITS import *
 
 # Pick a few parameters for a sample galaxy.
-objid = '587725578033955000'
+
+# The user must set this to the directory and file that needs to be read in.
+#inputfile = '/Users/acrider/Desktop/AGN 2014/BPT_SF_data.csv'
+inputfile = '/Users/acrider/Desktop/AGN 2014/BPT_AGN_data.csv'
+
+# Read in the CSV file.
+data = [];
+with open(inputfile, 'rb') as f:
+    csvReader = csv.reader(f, delimiter=',',skipinitialspace=True)
+    headers = csvReader.next()
+    for row in csvReader:
+        data.append(row);
+    data = np.asarray(data)
+
+# Get a list of all of the unique DR7 galaxy IDs.
+oldObjID       = data[:,1]
+oldObjID       = np.unique(oldObjID)
+nUnique        = len(oldObjID)
+
+# Create an empty array to store the Sersic fit parameters.
+sersic_n = np.zeros(nUnique)
+sersic_n = sersic_n - 1.0
+
+# Set a few other things...
 FITS_directory = '/Users/acrider/Desktop/FITS/'
 ugriz = 'r'
 obj = ''
 
-# Run retrieve_SDSS_params...
-run, rerun, camcol, field, obj, rowc, colc = retrieve_SDSS_params(objid)
+# MAIN LOOP
+for i in xrange(0,nUnique):
+#for i in xrange(0,1):
 
-# ...so you can name the FIT file...    
-put_file = FITS_directory + ugriz + '-' + run + '-' + camcol + '-' + field + '.fits'
+    objid = oldObjID[i]
+    
+    # Run retrieve_SDSS_params...
+    run, rerun, camcol, field, obj, rowc, colc = retrieve_SDSS_params(objid)
 
-# ...and then get it from the SDSS database.    
-get_SDSS_FITS(run, rerun, camcol, field, ugriz, put_file)
+    # ...so you can name the FIT file...    
+    put_file = FITS_directory + ugriz + '-' + run + '-' + camcol + '-' + field + '.fits'
 
-# Now get the image data itself out of the FITS file.
-r_img, gain, sky, dark_var, sky_err = get_SDSS_img(put_file, rowc, colc)
+    # ...and then get it from the SDSS database.    
+    get_SDSS_FITS(run, rerun, camcol, field, ugriz, put_file)
 
-# Plot the 100x100 image with contours.
-figure0 = py.figure(0)
-figure0.clf()
-f1 = py.imshow(r_img, cmap = cm.Greys_r)
-N_contours = 20
-cn = plt.contour(ndimage.gaussian_filter(r_img, sigma=1.0, order=0), N_contours) 
-plt.show()
+    # Now get the image data itself out of the FITS file.
+    r_img, gain, sky, dark_var, sky_err = get_SDSS_img(put_file, rowc, colc)
 
-x = colc
-y = rowc
+    # Plot the 100x100 image with contours.
+    figure_SDSS = py.figure(0)
+    figure_SDSS.clf()
+    py.imshow(r_img, cmap = cm.Greys_r)
+    N_contours = 20
+    plt.contour(ndimage.gaussian_filter(r_img, sigma=1.0, order=0), N_contours) 
+    plt.show()
 
-xmin = int(x - 50)
-xmax = xmin + 99
-ymin = int(y - 50)
-ymax = ymin + 99
+    x = colc # Which way should these be?!?
+    y = rowc #
 
-output_image = '/Users/acrider/Desktop/my-example/imgblock.fits'
-
-create_galfit_feedme('/Users/acrider/Desktop/my-example/galfit.feedme',
+    xmin = int(x - 50)
+    xmax = xmin + 99
+    ymin = int(y - 50)
+    ymax = ymin + 99
+    
+    output_image = '/Users/acrider/Desktop/my-example/imgblock.fits'
+    
+    create_galfit_feedme('/Users/acrider/Desktop/my-example/galfit.feedme',
                             input_image=put_file,
                             output_image=output_image,
                             xmin=xmin, xmax=xmax,
                             ymin=ymin, ymax=ymax,
                             x=x,y=y )
-#run_galfit()
+    run_galfit()
 
-img_original  = pyfits.getdata(output_image,1)
-img_model     = pyfits.getdata(output_image,2)
-img_residuals = pyfits.getdata(output_image,3) 
+    img_original  = pyfits.getdata(output_image,1)
+    img_model     = pyfits.getdata(output_image,2)
+    img_residuals = pyfits.getdata(output_image,3)
 
-# Two subplots, the axes array is 1-d
-f, axarr = plt.subplots(1,3)
-axarr[0].imshow(img_original)
-axarr[1].imshow(img_model)
-axarr[2].imshow(img_residuals)
+    tmp_n      = pyfits.getval(output_image,'1_N', 2)
+    tmp_n      = tmp_n.replace('*','') 
+    sersic_n[i] = float(tmp_n.split(' +/- ')[0])
+    sersic_n_error = float(tmp_n.split(' +/- ')[1])
+    print 'Sersic n = ', sersic_n[i], '+/-', sersic_n_error
+     
+    # Two subplots, the axes array is 1-d
+    plt.figure(1)
+    plt.clf()
+    plt.subplot(1,3,1)
+    plt.imshow(img_original)
+    plt.subplot(1,3,2)
+    plt.imshow(img_model)
+    plt.subplot(1,3,3)
+    plt.imshow(img_residuals)
+    plt.show()
+    
+    # Create histogram of Sersic n values.    
+    plt.figure(2)
+    plt.clf()
 
-plt.show()
+    bins = np.arange(51)/10.0
+    plt.hist(sersic_n, bins=bins)
+    plt.show()
 

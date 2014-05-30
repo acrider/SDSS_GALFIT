@@ -21,12 +21,15 @@ def retrieve_SDSS_params(objid):
 
     temp = 'http://cas.sdss.org/dr7/en/tools/explore/OETOC.asp?id='
     
+    print temp+objid
+    
     response = urllib2.urlopen(temp+objid)
     html     = response.read()
     start    = html.find('onLoad="loadSummary(')
     newId    = html[start+21:start+39] # This should look like 0x08290efc61020051
     newSpec  = html[start+49:start+67] # This should look like 0x0000000000000000
     newURL   = 'http://cas.sdss.org/dr7/en/tools/explore/summary.asp?id=' + newId + '&spec=' + newSpec
+    print newURL
     response = urllib2.urlopen(newURL)
     html     = response.read()
     start    = html.find('colc')
@@ -115,7 +118,8 @@ import matplotlib.cm as cm
 import scipy.ndimage as ndimage
 
 # Pick a few parameters for a sample galaxy.
-objid = '587725578033955000'
+objid = '587722953306669460'
+
 FITS_directory = '/Users/acrider/Desktop/FITS/'
 ugriz = 'r'
 obj = ''
